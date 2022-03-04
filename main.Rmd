@@ -19,8 +19,6 @@ library(forecast)
 library(forecastHybrid)
 library(gbm)
 library(nnfor)
-library(smooth)
-library(greybox)
 ```
 
 Reading Data
@@ -53,11 +51,16 @@ for(j in c(2:13)){
 
 
 ```{r}
-  ggplot(data=Products[[k]], aes(x=c(2000:2020))) +
-      geom_line(aes(y =totalsPerCapita[[k]]))+
-      geom_line(color='#E51837', aes(y=importsPerCapita[[k]]))+
-      geom_line(color='#0004FF',aes(y=domesticPerCapita[[k]]))+
-      xlab('Years')+ylab('Totals Per Capita')
+for(i in c(1:13)){
+  print(
+      ggplot(data=Products[[i]], aes(x=c(2000:2020))) +
+      geom_line(aes(y =totalsPerCapita[[i]],color='Total'))+
+      geom_line(aes(y=importsPerCapita[[i]],color='Imports'))+
+      geom_line(aes(y=domesticPerCapita[[i]],color='Domestic'))+
+      xlab('Years')+ylab('Totals Per Capita')+
+      labs(title=names(Products)[i])+
+      scale_color_manual(name='Legend',values = c('Total' = "black", "Imports" = "blue",'Domestic'='red')))
+}
 ```
 
 Generating Training and Testing data
@@ -181,6 +184,8 @@ for(h in c(1:13)){
 
 Exponential Smoothing
 ```{r}
+library(smooth)
+library(greybox)
 for (i in c(1:13)){
   es(trainTotals[[i]], h=4, holdout=FALSE, interval=TRUE, silent=FALSE)
 }
