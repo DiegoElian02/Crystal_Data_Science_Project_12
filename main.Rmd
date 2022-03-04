@@ -19,6 +19,8 @@ library(forecast)
 library(forecastHybrid)
 library(gbm)
 library(nnfor)
+library(smooth)
+library(greybox)
 ```
 
 Reading Data
@@ -184,3 +186,11 @@ for (i in c(1:13)){
   es(trainTotals[[i]], h=4, holdout=FALSE, interval=TRUE, silent=FALSE)
 }
 ```
+
+Simple Moving Average
+```{r}
+for (i in c(1:13)){
+  sma(trainTotals[[i]], h=4, holdout=FALSE, interval=TRUE, silent=FALSE)
+}
+```
+
