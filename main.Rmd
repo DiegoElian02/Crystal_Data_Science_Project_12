@@ -26,7 +26,6 @@ Reading Data
 Tmatrix <- read_csv("Tobacco_Consumption.csv")
 Tdata<-as.data.frame(Tmatrix)
 Tdata$item<-paste(Tdata$Submeasure," in ",Tdata$`Data Value Unit`)
-x = 4
 ```
 
 Dividing by products
@@ -179,3 +178,9 @@ for(h in c(1:13)){
 
 ```
 
+Exponential Smoothing
+```{r}
+for (i in c(1:13)){
+  es(trainTotals[[i]], h=4, holdout=FALSE, interval=TRUE, silent=FALSE)
+}
+```
