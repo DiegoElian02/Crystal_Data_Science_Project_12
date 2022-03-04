@@ -30,7 +30,6 @@ Tdata$item<-paste(Tdata$Submeasure," in ",Tdata$`Data Value Unit`)
 
 Dividing by products
 ```{r}
-x=666
 Products<-list()
 for (i in Tdata$item[1:13]){
   Products<-c(Products,list(filter(Tdata, item==i)))
