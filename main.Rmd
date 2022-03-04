@@ -26,6 +26,7 @@ Reading Data
 Tmatrix <- read_csv("Tobacco_Consumption.csv")
 Tdata<-as.data.frame(Tmatrix)
 Tdata$item<-paste(Tdata$Submeasure," in ",Tdata$`Data Value Unit`)
+x = 4
 ```
 
 Dividing by products
