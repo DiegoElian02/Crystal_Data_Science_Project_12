@@ -81,7 +81,10 @@ for(i in c(1:13)){
   sarima_ts<-auto.arima(trainTotals[[i]])
   summary(sarima_ts)
   plot(forecast(sarima_ts,h=5))
+  print(sarima_ts)
 }
+
+
 ```
 
 Facebook Prophet Prediction Model
@@ -196,5 +199,10 @@ Simple Moving Average
 for (i in c(1:13)){
   sma(trainTotals[[i]], h=4, holdout=FALSE, interval=TRUE, silent=FALSE)
 }
+```
+
+Error calculation
+```{r}
+
 ```
 
