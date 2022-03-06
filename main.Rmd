@@ -74,63 +74,136 @@ for(i in c(1:13)){
 
 ```
 
+Function to get the Mean Squared Error from 2 vectors
+```{r}
+MSE<- function (v1,v2){
+  return(sum((v1-v2)^2)/length(v1))
+}
+```
+
 
 Auto-ARIMA
 ```{r}
+arimaErrors<-c()
 for(i in c(1:13)){
+  #Training and making forecast until 2021 using AUTO-Arima 
   sarima_ts<-auto.arima(trainTotals[[i]])
-  summary(sarima_ts)
-  plot(forecast(sarima_ts,h=5))
-  print(sarima_ts)
-}
-
-
-```
-
-Facebook Prophet Prediction Model
-```{r}
-dat<-as.character(c(2000:2016))
-dates<-c(rep('-01-01',17))
-dates<-paste(dat,dates,sep='')
-dates<-as.Date.character(dates,format = c('%Y-%m-%d'))
-
-for( p in c(1:13)){
-    m <- prophet(data.frame(ds=dates,y=trainTotals[[p]]%>%as.numeric()),changepoint.prior.scale = 0.1)
-    future <- make_future_dataframe(m, periods = 5, freq = 60*60*24*366)
-    forecast <- predict(m, future)
-    plot(m, forecast)
+  arima_model<-forecast(sarima_ts,h=5)
+  
+  #Plotting prediction and testing data (red for testing data)
+  plot(arima_model)
+  lines(testTotals[[i]],col='red')
+  
+  #Getting MSE (the head and tail are used to get from 2017-2020)
+  prediction<-arima_model$fitted%>%as.numeric()%>%tail(5)%>%head(4)
+  test<-testTotals[[i]]%>%as.numeric()
+  
+  #Saving MSE in arimaError vector
+  arimaErrors<-c(arimaErrors,MSE(prediction,test))
 }
 ```
 
 Neural Network Autoregression
 ```{r}
+nnErrors<-c()
 for(i in c(1:13)){
+  #Training model
   fit<-nnetar(trainTotals[[i]],lambda='auto')
-  plot(forecast(fit,h=5))
+  nn_model<-forecast(fit,h=5)
+  
+  #Plotting prediction and testing data (red for testing data)
+  plot(nn_model)
+  lines(testTotals[[i]],col='red')  
+  
+  #Getting MSE (the head and tail are used to get from 2017-2020)
+  prediction<-nn_model$fitted%>%as.numeric()%>%tail(5)%>%head(4)
+  test<-testTotals[[i]]%>%as.numeric()
+  
+  #Saving MSE in nnError vector
+  nnErrors<-c(nnErrors,MSE(prediction,test))
 }
 ```
 
 Hybrid Model
 ```{r}
+hybErrors<-c()
 for(i in c(1:13)){
-hyb.mod<- hybridModel(trainTotals[[i]])
-hyb.f <- forecast(hyb.mod,5)
-plot(hyb.f)  
+  #Training and making forecast
+  hyb_mod<- hybridModel(trainTotals[[i]])
+  hyb_forecast <- forecast(hyb_mod,5)
+  
+  #Plotting prediction and testing data (red for testing data)
+  plot(hyb_forecast)  
+  lines(testTotals[[i]],col='red') 
+  
+  #Getting MSE (the head and tail are used to get from 2017-2020)
+  prediction<-hyb_forecast$fitted%>%as.numeric()%>%tail(5)%>%head(4)
+  test<-testTotals[[i]]%>%as.numeric()
+  
+  #Saving MSE in hybError vector
+  hybErrors<-c(hybErrors,MSE(prediction,test))
 }
 ```
 
 Multilayer Perceptron Model
 ```{r}
+mlpErrors<-c()
 for(i in c(1:13)){
-  mlp.16<-mlp(trainTotals[[i]])
-  mlp.16
-  mlp.f16<-forecast(mlp.16,5)
-  plot(mlp.f16)
+  #Training
+  mlp_fit<-mlp(trainTotals[[i]])
+  mlp_model<-forecast(mlp_fit,5)
+  
+  #Plotting
+  plot(mlp_model)
+  lines(testTotals[[i]],col='red')
+  
+  #Getting MSE (the head and tail are used to get from 2017-2020)
+  prediction<-mlp_model$fitted%>%as.numeric()%>%tail(5)%>%head(4)
+  test<-testTotals[[i]]%>%as.numeric()
+  
+  ##Saving MSE in mlpError vector
+  mlpErrors<-c(mlpErrors,MSE(prediction,test))
+}
+```
+
+Exponential Smoothing
+```{r}
+library(smooth)
+library(greybox)
+
+expErrors<-c()
+for (i in c(1:13)){
+  #Generating adn plotting model
+  exp_model<-es(trainTotals[[i]], h=5, holdout=FALSE, interval=TRUE, silent=FALSE)
+  
+  #Getting MSE (the head and tail are used to get from 2017-2020)
+  prediction<-exp_model$forecast%>%as.numeric()%>%tail(5)%>%head(4)
+  test<-testTotals[[i]]%>%as.numeric()
+  
+  ##Saving MSE in expError vector
+  expErrors<-c(expErrors,MSE(prediction,test))
+}
+```
+
+Simple Moving Average
+```{r}
+smaErrors<-c()
+for (i in c(1:13)){
+  #Generating and plotting model
+  sma_model<-sma(trainTotals[[i]], h=5, order=3, holdout=FALSE, interval=TRUE, silent=FALSE)
+  
+  #Getting MSE (the head and tail are used to get from 2017-2020)
+  prediction<-sma_model$forecast%>%as.numeric()%>%tail(5)%>%head(4)
+  test<-testTotals[[i]]%>%as.numeric()
+  
+  ##Saving MSE in smaError vector
+  smaErrors<-c(smaErrors,MSE(prediction,test))
 }
 ```
 
 Polinomial Regression
 ```{r}
+polErrors<-c()
 for(h in c(1:13)){
   #Load and plot the data
   polydf <- data.frame(year=c(2000:2016),value=trainTotals[[h]]%>%as.numeric())
@@ -172,8 +245,8 @@ for(h in c(1:13)){
   
   # Make predictions
   model <- lm(value ~ poly(year, mdegree), data = polydf)
-  predictions <- model %>% predict(data.frame('year'=c(2017, 2021)))
-  predictionsdf <- data.frame('year' = c(2017, 2021), 'value' = predictions)
+  predictions <- model %>% predict(data.frame('year'=c(2017:2021)))
+  predictionsdf <- data.frame('year' = c(2017: 2021), 'value' = predictions)
   totaldf <- rbind(polydf, predictionsdf )
   
   print(ggplot(totaldf, aes(x=year, y=value)) + 
@@ -181,28 +254,212 @@ for(h in c(1:13)){
             stat_smooth(method='lm', formula = y ~ poly(x,mdegree), size = 1)+
             xlab('year') +
             ylab('value'))
+  
+  #Saving MSE in vector
+  polErrors<-c(polErrors,MSE(predictions[1:4],testTotals[[i]]%>%as.numeric()))
 }
 
 ```
 
-Exponential Smoothing
+Error dtaframe generation
 ```{r}
-library(smooth)
-library(greybox)
-for (i in c(1:13)){
-  es(trainTotals[[i]], h=4, holdout=FALSE, interval=TRUE, silent=FALSE)
+#Generating dataframe of all MSEs
+Error<-cbind(arimaErrors,nnErrors,hybErrors,mlpErrors,expErrors,smaErrors,polErrors)%>%t()%>%data.frame()
+names(Error)<-Products%>%names()
+Error
+```
+
+Getting best model for every type of tobacco
+```{r}
+for(i in c(1:13)){
+  print(rownames(Error)[which.min(Error[,i])])
 }
 ```
 
-Simple Moving Average
+2021 Final predictions per capita with 10% training set
 ```{r}
-for (i in c(1:13)){
-  sma(trainTotals[[i]], h=4, holdout=FALSE, interval=TRUE, silent=FALSE)
+#Generating new training set
+trainTotals10<-list()
+testTotals10<-list()
+for(i in c(1:13)){
+  trainTotals10<-c(trainTotals10, list(ts(head(totalsPerCapita[[i]],19),start=c(2000),end=c(2018),frequency = 1)))
+  testTotals10<-c(testTotals10, list(ts(tail(totalsPerCapita[[i]],2),start=c(2019),end=c(2020),frequency = 1)))
 }
+
+#Creating array to store the 2021 forecasts and errors
+forecast2021<-c()
+predictionMSE<-c()
 ```
 
-Error calculation
+## Chewing Tobacco in Pounds
 ```{r}
-
+ #Generating adn plotting model
+  exp_model<-es(trainTotals10[[1]], h=3, holdout=FALSE, interval=TRUE, silent=FALSE)
+  
+  #Getting MSE (the head and tail are used to get from 2019-2020)
+  prediction<-exp_model$forecast%>%as.numeric()%>%tail(3)%>%head(2)
+  test<-testTotals10[[1]]%>%as.numeric()
+  
+  ##Saving MSE and forecast
+  predictionMSE<-c(predictionMSE,MSE(prediction,test))
+  forecast2021<-c(forecast2021,exp_model$forecast%>%as.numeric()%>%tail(1))
 ```
+
+## Cigarrates Removal in Cigarrates
+```{r}
+ #Generating adn plotting model
+  exp_model<-es(trainTotals10[[2]], h=3, holdout=FALSE, interval=TRUE, silent=FALSE)
+  
+  #Getting MSE (the head and tail are used to get from 2019-2020)
+  prediction<-exp_model$forecast%>%as.numeric()%>%tail(3)%>%head(2)
+  test<-testTotals10[[2]]%>%as.numeric()
+  
+  ##Saving MSE and forecast
+  predictionMSE<-c(predictionMSE,MSE(prediction,test))
+  forecast2021<-c(forecast2021,exp_model$forecast%>%as.numeric()%>%tail(1))
+```
+
+## Total Cigars in Cigars
+```{r}
+  #Generating and plotting model
+  sma_model<-sma(trainTotals10[[3]], h=3, order=3, holdout=FALSE, interval=TRUE, silent=FALSE)
+  
+  #Getting MSE (the head and tail are used to get from 2017-2020)
+  prediction<-sma_model$forecast%>%as.numeric()%>%tail(3)%>%head(1)
+  test<-testTotals10[[3]]%>%as.numeric()
+  
+  #Saving MSE and forecast
+  predictionMSE<-c(predictionMSE,MSE(prediction,test))
+  forecast2021<-c(forecast2021,sma_model$forecast%>%as.numeric()%>%tail(1))
+```
+
+## Total loose Tobacco in Cigarrates equivalent
+The datra wont change because we move between units so if we do the same with Total loose Tobacco in Pounds it will show the same graph and prediction but scaled. 
+```{r}
+  #Generating adn plotting model
+  exp_model<-es(trainTotals10[[4]], h=3, holdout=FALSE, interval=TRUE, silent=FALSE)
+  
+  #Getting MSE (the head and tail are used to get from 2019-2020)
+  prediction<-exp_model$forecast%>%as.numeric()%>%tail(3)%>%head(2)
+  test<-testTotals10[[4]]%>%as.numeric()
+  
+  ##Saving MSE and forecast
+  predictionMSE<-c(predictionMSE,MSE(prediction,test))
+  forecast2021<-c(forecast2021,exp_model$forecast%>%as.numeric()%>%tail(1))
+```
+
+## Small Cigars in Cigars
+```{r}
+  #Generating adn plotting model
+  exp_model<-es(trainTotals10[[6]], h=3, holdout=FALSE, interval=TRUE, silent=FALSE)
+  
+  #Getting MSE (the head and tail are used to get from 2019-2020)
+  prediction<-exp_model$forecast%>%as.numeric()%>%tail(3)%>%head(2)
+  test<-testTotals10[[6]]%>%as.numeric()
+  
+  ##Saving MSE and forecast
+  predictionMSE<-c(predictionMSE,MSE(prediction,test))
+  forecast2021<-c(forecast2021,exp_model$forecast%>%as.numeric()%>%tail(1))
+```
+
+##Pippe Tobacco in Pounds
+```{r}
+  #Generating adn plotting model
+  exp_model<-es(trainTotals10[[7]], h=3, holdout=FALSE, interval=TRUE, silent=FALSE)
+  
+  #Getting MSE (the head and tail are used to get from 2019-2020)
+  prediction<-exp_model$forecast%>%as.numeric()%>%tail(3)%>%head(2)
+  test<-testTotals10[[7]]%>%as.numeric()
+  
+  ##Saving MSE and forecast
+  predictionMSE<-c(predictionMSE,MSE(prediction,test))
+  forecast2021<-c(forecast2021,exp_model$forecast%>%as.numeric()%>%tail(1))
+```
+
+## Roll-your-own Tobacco in cigarrate equivalents
+```{r}
+  #Generating adn plotting model
+  exp_model<-es(trainTotals10[[8]], h=3, holdout=FALSE, interval=TRUE, silent=FALSE)
+  
+  #Getting MSE (the head and tail are used to get from 2019-2020)
+  prediction<-exp_model$forecast%>%as.numeric()%>%tail(3)%>%head(2)
+  test<-testTotals10[[8]]%>%as.numeric()
+  
+  ##Saving MSE and forecast
+  predictionMSE<-c(predictionMSE,MSE(prediction,test))
+  forecast2021<-c(forecast2021,exp_model$forecast%>%as.numeric()%>%tail(1))
+```
+
+## Large Cigars in Cigars
+```{r}
+  library(forecast)
+  library(forecastHybrid)
+  library(fpp2)
+  library(nnfor)
+  #Training model
+  fit<-nnetar(trainTotals10[[10]],lambda='auto')
+  nn_model<-forecast(fit,h=3)
+  
+  #Plotting prediction and testing data (red for testing data)
+  plot(nn_model)
+  lines(testTotals10[[10]],col='red')  
+  
+  #Getting MSE (the head and tail are used to get from 2017-2020)
+  prediction<-nn_model$fitted%>%as.numeric()%>%tail(3)%>%head(2)
+  test<-testTotals10[[10]]%>%as.numeric()
+  
+  #Saving MSE and forecast
+  predictionMSE<-c(predictionMSE,MSE(prediction,test))
+  forecast2021<-c(forecast2021,nn_model$fittedt%>%as.numeric()%>%tail(1))
+```
+
+## Snuff in Pounds
+```{r}
+  #Training
+  mlp_fit<-mlp(trainTotals10[[12]])
+  mlp_model<-forecast(mlp_fit,3)
+  
+  #Plotting
+  plot(mlp_model)
+  lines(testTotals10[[12]],col='red')
+  
+  #Getting MSE (the head and tail are used to get from 2017-2020)
+  prediction<-mlp_model$fitted%>%as.numeric()%>%tail(3)%>%head(2)
+  test<-testTotals10[[12]]%>%as.numeric()
+  
+  #Saving MSE and forecast
+  predictionMSE<-c(predictionMSE,MSE(prediction,test))
+  forecast2021<-c(forecast2021,exp_model$forecast%>%as.numeric()%>%tail(1))
+```
+
+## Pipe Tobacco in cigarratte equivalents
+```{r}
+  library(smooth)
+  #Generating adn plotting model
+  exp_model<-es(trainTotals10[[11]], h=3, holdout=FALSE, interval=TRUE, silent=FALSE)
+  
+  #Getting MSE (the head and tail are used to get from 2019-2020)
+  prediction<-exp_model$forecast%>%as.numeric()%>%tail(3)%>%head(2)
+  test<-testTotals10[[11]]%>%as.numeric()
+  
+  ##Saving MSE and forecast
+  predictionMSE<-c(predictionMSE,MSE(prediction,test))
+  forecast2021<-c(forecast2021,exp_model$forecast%>%as.numeric()%>%tail(1))
+```
+
+## Totals by model
+```{r}
+  #Generating adn plotting model
+  exp_model<-es(trainTotals10[[13]], h=3, holdout=FALSE, interval=TRUE, silent=FALSE)
+  
+  #Getting MSE (the head and tail are used to get from 2019-2020)
+  prediction<-exp_model$forecast%>%as.numeric()%>%tail(3)%>%head(2)
+  test<-testTotals10[[13]]%>%as.numeric()
+  
+  ##Saving MSE and forecast
+  predictionMSE<-c(predictionMSE,MSE(prediction,test))
+  forecast2021<-c(forecast2021,exp_model$forecast%>%as.numeric()%>%tail(1))
+```
+
+
 
