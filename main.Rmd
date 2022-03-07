@@ -1,6 +1,6 @@
 ---
-title: "test"
-author: "eliasgarzav"
+title: "Tobacco consumption prediction for 2021"
+author: "Elías Garza, Diego Rodríguez, Federico Medina"
 date: "28/2/2022"
 output: html_document
 ---
