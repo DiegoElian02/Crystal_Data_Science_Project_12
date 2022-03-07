@@ -9,8 +9,8 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-```{r}
-library(prophet)
+```{r, warning=FALSE,message=FALSE}
+
 library(dplyr)
 library(fpp2)
 library(readr)
@@ -21,14 +21,20 @@ library(gbm)
 library(nnfor)
 ```
 
-Reading Data
-```{r}
+\section{Reading Data}
+
+First of all, we need to read the data and analyze it to understand the structure of the dataset and decide what to do. Here, we realized that the dataset is conformed by the data of 13 tobacco products in 20 years. Also, we decided to create a new column named 'item' which concatenate other 2 variables (Submeasure and 'Data Value Unit'), in this way is easier to work with each product given that some of them have the same submeasure.
+
+```{r, warning=FALSE,message=FALSE}
 Tmatrix <- read_csv("Tobacco_Consumption.csv")
 Tdata<-as.data.frame(Tmatrix)
 Tdata$item<-paste(Tdata$Submeasure," in ",Tdata$`Data Value Unit`)
 ```
 
-Dividing by products
+\section{Dividing by products}
+
+Next step, we divided the dataset in 13 different dataframes for each product using the new variable 'item' so we can work with them separately.
+
 ```{r}
 Products<-list()
 for (i in Tdata$item[1:13]){
@@ -37,7 +43,8 @@ for (i in Tdata$item[1:13]){
 names(Products)<-Tdata$item[1:13]
 ```
 
-Create df of Totals, Imports and Domestic per Capita per Product
+and created df of Totals, Imports and Domestic per Capita per Product since these are de variables with which we will work. For this, we created new vectors for the per capita values, since the ones on the original dataframe appear to be rounded and some of this values cause problems, more than anything the 0s.
+
 ```{r}
 totalsPerCapita<-Products[[1]]%>%select(11)/Products[[1]]$Population
 importsPerCapita<-Products[[1]]%>%select(10)/Products[[1]]$Population
@@ -49,6 +56,12 @@ for(j in c(2:13)){
 }
 ```
 
+From the next plots we can extract some information:
+
+\begin{itemize}
+  \item Something happened in 2008 that affected tobacco consumption in most of its forms.
+  \item From snuff and chewing tobacco (the only 2 forms of noncombustible tobacco), it seems like chewing tobacco is loosing popularity while snuff gaining.
+  \item Both cigars and large cigars are preferable from imports to domestic ones. This is important to point out since for every other product there is a big preference for domestic production.
 
 ```{r}
 for(i in c(1:13)){
@@ -63,7 +76,10 @@ for(i in c(1:13)){
 }
 ```
 
-Generating Training and Testing data
+\section{Generating Training and Testing data}
+
+To start with the prediction section, first its needed to create a training and testing data. We'll use data from 2000 to 2016 as training and from 2017 to 2020 for testing.
+
 ```{r}
 trainTotals<-list()
 testTotals<-list()
@@ -81,14 +97,15 @@ MSE<- function (v1,v2){
 }
 ```
 
+Now everything is ready to start with the models. 
 
-Auto-ARIMA
+\section{Auto-ARIMA}
 ```{r}
 arimaErrors<-c()
 for(i in c(1:13)){
   #Training and making forecast until 2021 using AUTO-Arima 
   sarima_ts<-auto.arima(trainTotals[[i]])
-  arima_model<-forecast(sarima_ts,h=5)
+  arima_model<-forecast::forecast(sarima_ts,h=5)
   
   #Plotting prediction and testing data (red for testing data)
   plot(arima_model)
@@ -103,13 +120,13 @@ for(i in c(1:13)){
 }
 ```
 
-Neural Network Autoregression
+\section{Neural Network Autoregression}
 ```{r}
 nnErrors<-c()
 for(i in c(1:13)){
   #Training model
   fit<-nnetar(trainTotals[[i]],lambda='auto')
-  nn_model<-forecast(fit,h=5)
+  nn_model<-forecast::forecast(fit,h=5)
   
   #Plotting prediction and testing data (red for testing data)
   plot(nn_model)
@@ -124,13 +141,13 @@ for(i in c(1:13)){
 }
 ```
 
-Hybrid Model
+\section{Hybrid Model}
 ```{r}
 hybErrors<-c()
 for(i in c(1:13)){
   #Training and making forecast
   hyb_mod<- hybridModel(trainTotals[[i]])
-  hyb_forecast <- forecast(hyb_mod,5)
+  hyb_forecast <- forecast::forecast(hyb_mod,5)
   
   #Plotting prediction and testing data (red for testing data)
   plot(hyb_forecast)  
@@ -145,13 +162,13 @@ for(i in c(1:13)){
 }
 ```
 
-Multilayer Perceptron Model
+\section{Multilayer Perceptron Model}
 ```{r}
 mlpErrors<-c()
 for(i in c(1:13)){
   #Training
   mlp_fit<-mlp(trainTotals[[i]])
-  mlp_model<-forecast(mlp_fit,5)
+  mlp_model<-forecast::forecast(mlp_fit,5)
   
   #Plotting
   plot(mlp_model)
@@ -166,7 +183,7 @@ for(i in c(1:13)){
 }
 ```
 
-Exponential Smoothing
+\section{Exponential Smoothing}
 ```{r}
 library(smooth)
 library(greybox)
@@ -185,7 +202,7 @@ for (i in c(1:13)){
 }
 ```
 
-Simple Moving Average
+\section{Simple Moving Average}
 ```{r}
 smaErrors<-c()
 for (i in c(1:13)){
@@ -201,7 +218,7 @@ for (i in c(1:13)){
 }
 ```
 
-Polinomial Regression
+\section{Polinomial Regression}
 ```{r}
 polErrors<-c()
 for(h in c(1:13)){
@@ -261,7 +278,11 @@ for(h in c(1:13)){
 
 ```
 
-Error dtaframe generation
+
+\section{Error dtaframe generation}
+
+Once models are done, we have to measure their error and compare them with each other.
+
 ```{r}
 #Generating dataframe of all MSEs
 Error<-cbind(arimaErrors,nnErrors,hybErrors,mlpErrors,expErrors,smaErrors,polErrors)%>%t()%>%data.frame()
@@ -270,6 +291,7 @@ Error
 ```
 
 Getting best model for every type of tobacco
+
 ```{r}
 for(i in c(1:13)){
   print(rownames(Error)[which.min(Error[,i])])
@@ -277,6 +299,7 @@ for(i in c(1:13)){
 ```
 
 2021 Final predictions per capita with 10% training set
+
 ```{r}
 #Generating new training set
 trainTotals10<-list()
@@ -291,7 +314,7 @@ forecast2021<-c()
 predictionMSE<-c()
 ```
 
-## Chewing Tobacco in Pounds
+\section{Chewing Tobacco in Pounds forecast}
 ```{r}
  #Generating adn plotting model
   exp_model<-es(trainTotals10[[1]], h=3, holdout=FALSE, interval=TRUE, silent=FALSE)
@@ -305,7 +328,7 @@ predictionMSE<-c()
   forecast2021<-c(forecast2021,exp_model$forecast%>%as.numeric()%>%tail(1))
 ```
 
-## Cigarrates Removal in Cigarrates
+\section{Cigarrates Removal in Cigarrates forecast}
 ```{r}
  #Generating adn plotting model
   exp_model<-es(trainTotals10[[2]], h=3, holdout=FALSE, interval=TRUE, silent=FALSE)
@@ -319,7 +342,7 @@ predictionMSE<-c()
   forecast2021<-c(forecast2021,exp_model$forecast%>%as.numeric()%>%tail(1))
 ```
 
-## Total Cigars in Cigars
+\section{Total Cigars in Cigars Forecast}
 ```{r}
   #Generating and plotting model
   sma_model<-sma(trainTotals10[[3]], h=3, order=3, holdout=FALSE, interval=TRUE, silent=FALSE)
@@ -333,8 +356,8 @@ predictionMSE<-c()
   forecast2021<-c(forecast2021,sma_model$forecast%>%as.numeric()%>%tail(1))
 ```
 
-## Total loose Tobacco in Cigarrates equivalent
-The datra wont change because we move between units so if we do the same with Total loose Tobacco in Pounds it will show the same graph and prediction but scaled. 
+\section{Total loose Tobacco in Cigarrates equivalent forecast}
+The data wont change because we move between units so if we do the same with Total loose Tobacco in Pounds it will show the same graph and prediction but scaled. 
 ```{r}
   #Generating adn plotting model
   exp_model<-es(trainTotals10[[4]], h=3, holdout=FALSE, interval=TRUE, silent=FALSE)
@@ -348,7 +371,7 @@ The datra wont change because we move between units so if we do the same with To
   forecast2021<-c(forecast2021,exp_model$forecast%>%as.numeric()%>%tail(1))
 ```
 
-## Small Cigars in Cigars
+\section{Small Cigars in Cigars forecast}
 ```{r}
   #Generating adn plotting model
   exp_model<-es(trainTotals10[[6]], h=3, holdout=FALSE, interval=TRUE, silent=FALSE)
@@ -362,7 +385,7 @@ The datra wont change because we move between units so if we do the same with To
   forecast2021<-c(forecast2021,exp_model$forecast%>%as.numeric()%>%tail(1))
 ```
 
-##Pippe Tobacco in Pounds
+\section{Pippe Tobacco in Pounds forecast}
 ```{r}
   #Generating adn plotting model
   exp_model<-es(trainTotals10[[7]], h=3, holdout=FALSE, interval=TRUE, silent=FALSE)
@@ -376,7 +399,7 @@ The datra wont change because we move between units so if we do the same with To
   forecast2021<-c(forecast2021,exp_model$forecast%>%as.numeric()%>%tail(1))
 ```
 
-## Roll-your-own Tobacco in cigarrate equivalents
+\section{Roll-your-own Tobacco in cigarrate equivalents forecast}
 ```{r}
   #Generating adn plotting model
   exp_model<-es(trainTotals10[[8]], h=3, holdout=FALSE, interval=TRUE, silent=FALSE)
@@ -390,7 +413,7 @@ The datra wont change because we move between units so if we do the same with To
   forecast2021<-c(forecast2021,exp_model$forecast%>%as.numeric()%>%tail(1))
 ```
 
-## Large Cigars in Cigars
+\section{Large Cigars in Cigars forecast}
 ```{r}
   library(forecast)
   library(forecastHybrid)
@@ -398,7 +421,7 @@ The datra wont change because we move between units so if we do the same with To
   library(nnfor)
   #Training model
   fit<-nnetar(trainTotals10[[10]],lambda='auto')
-  nn_model<-forecast(fit,h=3)
+  nn_model<-forecast::forecast(fit,h=3)
   
   #Plotting prediction and testing data (red for testing data)
   plot(nn_model)
@@ -413,11 +436,11 @@ The datra wont change because we move between units so if we do the same with To
   forecast2021<-c(forecast2021,nn_model$fittedt%>%as.numeric()%>%tail(1))
 ```
 
-## Snuff in Pounds
+\section{Snuff in Pounds forecast}
 ```{r}
   #Training
   mlp_fit<-mlp(trainTotals10[[12]])
-  mlp_model<-forecast(mlp_fit,3)
+  mlp_model<-forecast::forecast(mlp_fit,3)
   
   #Plotting
   plot(mlp_model)
@@ -432,7 +455,7 @@ The datra wont change because we move between units so if we do the same with To
   forecast2021<-c(forecast2021,exp_model$forecast%>%as.numeric()%>%tail(1))
 ```
 
-## Pipe Tobacco in cigarratte equivalents
+\section{Pipe Tobacco in cigarratte equivalents forecast}
 ```{r}
   library(smooth)
   #Generating adn plotting model
@@ -447,7 +470,7 @@ The datra wont change because we move between units so if we do the same with To
   forecast2021<-c(forecast2021,exp_model$forecast%>%as.numeric()%>%tail(1))
 ```
 
-## Totals by model
+\section{Totals by model}
 ```{r}
   #Generating adn plotting model
   exp_model<-es(trainTotals10[[13]], h=3, holdout=FALSE, interval=TRUE, silent=FALSE)
