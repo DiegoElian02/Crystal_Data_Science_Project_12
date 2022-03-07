@@ -1,8 +1,11 @@
 ---
 title: "Tobacco consumption prediction for 2021"
-author: "Elías Garza, Diego Rodríguez, Federico Medina"
+author: "Elias Garza, Diego Rodriguez, Federico Medina"
 date: "28/2/2022"
-output: html_document
+output:
+  pdf_document: default
+  html_document: default
+  word_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -23,7 +26,7 @@ library(nnfor)
 
 \section{Reading Data}
 
-First of all, we need to read the data and analyze it to understand the structure of the dataset and decide what to do. Here, we realized that the dataset is conformed by the data of 13 tobacco products in 20 years. Also, we decided to create a new column named 'item' which concatenate other 2 variables (Submeasure and 'Data Value Unit'), in this way is easier to work with each product given that some of them have the same submeasure.
+First of all, we need to read the data and analyze it to understand the structure of the dataset and decide what to do. Here, we realized that the dataset is conformed by the data of 13 tobacco products in 20 years. Also, we decided to create a new column named item which concatenate other 2 variables (Submeasure and Data Value Unit), in this way is easier to work with each product given that some of them have the same submeasure.
 
 ```{r, warning=FALSE,message=FALSE}
 Tmatrix <- read_csv("Tobacco_Consumption.csv")
@@ -33,7 +36,7 @@ Tdata$item<-paste(Tdata$Submeasure," in ",Tdata$`Data Value Unit`)
 
 \section{Dividing by products}
 
-Next step, we divided the dataset in 13 different dataframes for each product using the new variable 'item' so we can work with them separately.
+Next step, we divided the dataset in 13 different dataframes for each product using the new variable item so we can work with them separately.
 
 ```{r}
 Products<-list()
@@ -62,6 +65,7 @@ From the next plots we can extract some information:
   \item Something happened in 2008 that affected tobacco consumption in most of its forms.
   \item From snuff and chewing tobacco (the only 2 forms of noncombustible tobacco), it seems like chewing tobacco is loosing popularity while snuff gaining.
   \item Both cigars and large cigars are preferable from imports to domestic ones. This is important to point out since for every other product there is a big preference for domestic production.
+\end{itemize}
 
 ```{r}
 for(i in c(1:13)){
@@ -78,7 +82,7 @@ for(i in c(1:13)){
 
 \section{Generating Training and Testing data}
 
-To start with the prediction section, first its needed to create a training and testing data. We'll use data from 2000 to 2016 as training and from 2017 to 2020 for testing.
+To start with the prediction section, first its needed to create a training and testing data. We ll use data from 2000 to 2016 as training and from 2017 to 2020 for testing.
 
 ```{r}
 trainTotals<-list()
@@ -184,14 +188,14 @@ for(i in c(1:13)){
 ```
 
 \section{Exponential Smoothing}
-```{r}
+```{r, echo=FALSE,warning=FALSE,message=FALSE,error=FALSE, results='hide',fig.keep='all'}
 library(smooth)
 library(greybox)
 
 expErrors<-c()
 for (i in c(1:13)){
   #Generating adn plotting model
-  exp_model<-es(trainTotals[[i]], h=5, holdout=FALSE, interval=TRUE, silent=FALSE)
+  exp_model<-es(trainTotals[[i]], h=5, holdout=FALSE, interval=TRUE, silent='output')
   
   #Getting MSE (the head and tail are used to get from 2017-2020)
   prediction<-exp_model$forecast%>%as.numeric()%>%tail(5)%>%head(4)
@@ -207,7 +211,7 @@ for (i in c(1:13)){
 smaErrors<-c()
 for (i in c(1:13)){
   #Generating and plotting model
-  sma_model<-sma(trainTotals[[i]], h=5, order=3, holdout=FALSE, interval=TRUE, silent=FALSE)
+  sma_model<-sma(trainTotals[[i]], h=5, order=3, holdout=FALSE, interval=TRUE, silent='output')
   
   #Getting MSE (the head and tail are used to get from 2017-2020)
   prediction<-sma_model$forecast%>%as.numeric()%>%tail(5)%>%head(4)
@@ -298,7 +302,7 @@ for(i in c(1:13)){
 }
 ```
 
-2021 Final predictions per capita with 10% training set
+2021 Final predictions per capita with 10 training set
 
 ```{r}
 #Generating new training set
@@ -317,7 +321,7 @@ predictionMSE<-c()
 \section{Chewing Tobacco in Pounds forecast}
 ```{r}
  #Generating adn plotting model
-  exp_model<-es(trainTotals10[[1]], h=3, holdout=FALSE, interval=TRUE, silent=FALSE)
+  exp_model<-es(trainTotals10[[1]], h=3, holdout=FALSE, interval=TRUE, silent='output')
   
   #Getting MSE (the head and tail are used to get from 2019-2020)
   prediction<-exp_model$forecast%>%as.numeric()%>%tail(3)%>%head(2)
@@ -331,7 +335,7 @@ predictionMSE<-c()
 \section{Cigarrates Removal in Cigarrates forecast}
 ```{r}
  #Generating adn plotting model
-  exp_model<-es(trainTotals10[[2]], h=3, holdout=FALSE, interval=TRUE, silent=FALSE)
+  exp_model<-es(trainTotals10[[2]], h=3, holdout=FALSE, interval=TRUE, silent='output')
   
   #Getting MSE (the head and tail are used to get from 2019-2020)
   prediction<-exp_model$forecast%>%as.numeric()%>%tail(3)%>%head(2)
@@ -345,7 +349,7 @@ predictionMSE<-c()
 \section{Total Cigars in Cigars Forecast}
 ```{r}
   #Generating and plotting model
-  sma_model<-sma(trainTotals10[[3]], h=3, order=3, holdout=FALSE, interval=TRUE, silent=FALSE)
+  sma_model<-sma(trainTotals10[[3]], h=3, order=3, holdout=FALSE, interval=TRUE, silent='output')
   
   #Getting MSE (the head and tail are used to get from 2017-2020)
   prediction<-sma_model$forecast%>%as.numeric()%>%tail(3)%>%head(1)
@@ -360,7 +364,7 @@ predictionMSE<-c()
 The data wont change because we move between units so if we do the same with Total loose Tobacco in Pounds it will show the same graph and prediction but scaled. 
 ```{r}
   #Generating adn plotting model
-  exp_model<-es(trainTotals10[[4]], h=3, holdout=FALSE, interval=TRUE, silent=FALSE)
+  exp_model<-es(trainTotals10[[4]], h=3, holdout=FALSE, interval=TRUE, silent='output')
   
   #Getting MSE (the head and tail are used to get from 2019-2020)
   prediction<-exp_model$forecast%>%as.numeric()%>%tail(3)%>%head(2)
@@ -374,7 +378,7 @@ The data wont change because we move between units so if we do the same with Tot
 \section{Small Cigars in Cigars forecast}
 ```{r}
   #Generating adn plotting model
-  exp_model<-es(trainTotals10[[6]], h=3, holdout=FALSE, interval=TRUE, silent=FALSE)
+  exp_model<-es(trainTotals10[[6]], h=3, holdout=FALSE, interval=TRUE, silent='output')
   
   #Getting MSE (the head and tail are used to get from 2019-2020)
   prediction<-exp_model$forecast%>%as.numeric()%>%tail(3)%>%head(2)
@@ -388,7 +392,7 @@ The data wont change because we move between units so if we do the same with Tot
 \section{Pippe Tobacco in Pounds forecast}
 ```{r}
   #Generating adn plotting model
-  exp_model<-es(trainTotals10[[7]], h=3, holdout=FALSE, interval=TRUE, silent=FALSE)
+  exp_model<-es(trainTotals10[[7]], h=3, holdout=FALSE, interval=TRUE, silent='output')
   
   #Getting MSE (the head and tail are used to get from 2019-2020)
   prediction<-exp_model$forecast%>%as.numeric()%>%tail(3)%>%head(2)
@@ -402,7 +406,7 @@ The data wont change because we move between units so if we do the same with Tot
 \section{Roll-your-own Tobacco in cigarrate equivalents forecast}
 ```{r}
   #Generating adn plotting model
-  exp_model<-es(trainTotals10[[8]], h=3, holdout=FALSE, interval=TRUE, silent=FALSE)
+  exp_model<-es(trainTotals10[[8]], h=3, holdout=FALSE, interval=TRUE, silent='output')
   
   #Getting MSE (the head and tail are used to get from 2019-2020)
   prediction<-exp_model$forecast%>%as.numeric()%>%tail(3)%>%head(2)
@@ -459,7 +463,7 @@ The data wont change because we move between units so if we do the same with Tot
 ```{r}
   library(smooth)
   #Generating adn plotting model
-  exp_model<-es(trainTotals10[[11]], h=3, holdout=FALSE, interval=TRUE, silent=FALSE)
+  exp_model<-es(trainTotals10[[11]], h=3, holdout=FALSE, interval=TRUE, silent='output')
   
   #Getting MSE (the head and tail are used to get from 2019-2020)
   prediction<-exp_model$forecast%>%as.numeric()%>%tail(3)%>%head(2)
@@ -473,7 +477,7 @@ The data wont change because we move between units so if we do the same with Tot
 \section{Totals by model}
 ```{r}
   #Generating adn plotting model
-  exp_model<-es(trainTotals10[[13]], h=3, holdout=FALSE, interval=TRUE, silent=FALSE)
+  exp_model<-es(trainTotals10[[13]], h=3, holdout=FALSE, interval=TRUE, silent='output')
   
   #Getting MSE (the head and tail are used to get from 2019-2020)
   prediction<-exp_model$forecast%>%as.numeric()%>%tail(3)%>%head(2)
